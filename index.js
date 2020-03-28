@@ -1,90 +1,44 @@
 #!/usr/bin/env node
 
 /* global require, __dirname */
+const path = require('path');
+const pkgPath = path.resolve(process.cwd(), 'package.json');
+const releaserConfig = require(path.resolve(__dirname, 'package.json'));
 
 const inquirer = require('inquirer');
-const fs = require('fs');
-const path = require('path');
-const basePath = __dirname;
-const configPath = path.resolve(basePath, 'config.json');
-const { execSync } = require('child_process');
-const pkgPath = path.resolve(process.cwd(), 'package.json');
 
-const writeJsonToFile = (file, content) => {
-  const packageJsonIndent = 2;
-  fs.writeFileSync(file, JSON.stringify(content, null, packageJsonIndent), 'utf8');
-}
+const commands = require('./commands/index');
 
-let config;
+const {
+  questionsConfiguration,
+  loadCurrentAppConfig,
+  saveLocalConfig,
+  saveGlobalConfig,
+ } = require('./configure');
 
-try {
-  config = require(configPath);
-} catch (error) {
-  config = {};
-}
+const { loadPackageJson } = require('./utils');
 
-let packageJson;
-try {
-  packageJson = require(pkgPath);
-} catch (error) {
-  console.log(`Current Folder (${pkgPath}) does not contain a package.json file`);
-}
+const release = async ({
+  verbose,
+  dryRun,
+  reconfigure,
+  global: saveGlobal,
+} = {}) => {
+  const packageJson = loadPackageJson(pkgPath);
+  let config = loadCurrentAppConfig();
 
-const { name, version } = packageJson;
-const release = async () => {
-  if (!config[name]) {
-    const result = await inquirer
-      .prompt([
-        {
-          name: 'action',
-          type: 'list',
-          message: `Target directory already exists. Pick an action:`,
-          choices: [
-            { name: 'Overwrite', value: 'overwrite' },
-            { name: 'Merge', value: 'merge' },
-            { name: 'Cancel', value: false }
-          ]
-        },
-        {
-          name: 'commit',
-          type: 'confirm',
-          message: 'Committing package.json and package-lock.json to master?',
-          default: false
-        },
-        {
-          type: 'input',
-          name: 'command',
-          message: 'Which command to execute for build?',
-        },
-        {
-          type: 'input',
-          name: 'forceAdd',
-          message: 'Which folder do you want to force add?',
-        },
-        {
-          name: 'createTag',
-          type: 'confirm',
-          message: 'do you want to create tag?',
-          default: false
-        },
-        {
-          name: 'releaseNpm',
-          type: 'confirm',
-          message: 'do you want to release to npm?',
-          default: false
-        },
-        {
-          type: 'input',
-          name: 'remote',
-          message: 'Which remote you want to push (ex: origin, upstream)?',
-        },
-      ]);
+  if (!config || reconfigure) {
+    config = await questionsConfiguration(config);
+    config = { version: releaserConfig.version, ...config};
 
-    config[name] = result;
-    writeJsonToFile(configPath, config);
+    if (saveGlobal) {
+      saveGlobalConfig(config, packageJson.name);
+    } else {
+      saveLocalConfig(config);
+    }
   }
 
-  console.log(`Current package: ${name} - ${version}`);
+  console.log(`Current package: ${packageJson.name} - ${packageJson.version}`);
   const answers = await inquirer
     .prompt([
       {
@@ -94,37 +48,39 @@ const release = async () => {
       },
     ]);
 
-  packageJson.version = answers.version;
-  const remote = config[name].remote;
+  // packageJson.version = answers.version;
+  // writeJsonToFile(pkgPath, packageJson);
 
-  writeJsonToFile(pkgPath, packageJson);
+  commands.forEach((command) => {
+    if (command.condition(config)) {
+      command.handle({ ...config, version: answers.version, pkgPath, packageJson }, {
+        verbose,
+        dryRun,
+      });
+    }
+  });
 
-  execSync(`npm install`);
+  // if (config[name].commit) {
+  //   execSync(`git commit -am "release ${answers.version}" && git push ${remote} HEAD:master`);
+  // };
 
-  if (config[name].commit) {
-    execSync(`git commit -am "release ${answers.version}" && git push ${remote} HEAD:master`);
-  };
+  // if (config[name].command) {
+  //   execSync(answers.command);
+  // };
 
-  if (config[name].command) {
-    execSync(`npm run ${answers.command}`);
-  };
+  // if (config[name].forceAdd) {
+  //   execSync(`git add -f ${forceAdd}`);
+  // };
 
-  if (config[name].forceAdd) {
-    execSync(`git add -f ${forceAdd}`);
-  };
+  // execSync(`git commit -m "build and release ${answers.version}"`);
 
-  execSync(`git commit -m "build and release ${answers.version}"`);
+  // if (config[name].createTag) {
+  //   execSync(`git tag ${answers.version} && git push ${remote} ${answers.version}`);
+  // };
 
-  if (config[name].createTag) {
-    execSync(`git tag ${answers.version} && git push ${remote} ${answers.version}`);
-  };
-
-  if (config[name].releaseNpm) {
-    execSync(`npm publish`);
-  };
+  // if (config[name].releaseNpm) {
+  //   execSync(`npm publish`);
+  // };
 }
 
-release().catch(err => {
-  console.error(err)
-  process.exit(1)
-})
+module.exports = release;

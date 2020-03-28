@@ -1,0 +1,11 @@
+{
+  "version": "1.0.0",
+  "remote": "upstream",
+  "npmInstall": true,
+  "saveVersion": true,
+  "commit": true,
+  "buildCommand": "",
+  "forceAdd": "",
+  "createTag": true,
+  "releaseNpm": false
+}
