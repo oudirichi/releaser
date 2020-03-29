@@ -10,7 +10,7 @@
     "releaser": "bin/releaser.js"
   },
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
     "commander": "^5.0.0",
     "inquirer": "^7.0.4"
