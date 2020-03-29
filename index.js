@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 /* global require, __dirname */
 const path = require('path');
 const pkgPath = path.resolve(process.cwd(), 'package.json');
@@ -48,9 +46,6 @@ const release = async ({
       },
     ]);
 
-  // packageJson.version = answers.version;
-  // writeJsonToFile(pkgPath, packageJson);
-
   commands.forEach((command) => {
     if (command.condition(config)) {
       command.handle({ ...config, version: answers.version, pkgPath, packageJson }, {
@@ -59,28 +54,6 @@ const release = async ({
       });
     }
   });
-
-  // if (config[name].commit) {
-  //   execSync(`git commit -am "release ${answers.version}" && git push ${remote} HEAD:master`);
-  // };
-
-  // if (config[name].command) {
-  //   execSync(answers.command);
-  // };
-
-  // if (config[name].forceAdd) {
-  //   execSync(`git add -f ${forceAdd}`);
-  // };
-
-  // execSync(`git commit -m "build and release ${answers.version}"`);
-
-  // if (config[name].createTag) {
-  //   execSync(`git tag ${answers.version} && git push ${remote} ${answers.version}`);
-  // };
-
-  // if (config[name].releaseNpm) {
-  //   execSync(`npm publish`);
-  // };
 }
 
 module.exports = release;

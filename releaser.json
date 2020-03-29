@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "remote": "upstream",
+  "remote": "origin",
   "npmInstall": true,
   "saveVersion": true,
   "commit": true,
